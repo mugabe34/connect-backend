@@ -18,7 +18,7 @@ router.get("/dashboard", guard, async (_req: Request, res: Response) => {
 
 // Users
 router.get("/users", guard, async (req: Request, res: Response) => {
-  const { q, role } = req.query as any;
+  const { q, role } = req.query as { q?: string; role?: string };
   const filter: any = {};
   if (q) filter.$or = [{ name: new RegExp(q, "i") }, { email: new RegExp(q, "i") }];
   if (role) filter.role = role;
@@ -27,7 +27,7 @@ router.get("/users", guard, async (req: Request, res: Response) => {
 });
 
 router.patch("/users/:id", guard, async (req: Request, res: Response) => {
-  const { name, role, isActive } = req.body as any;
+  const { name, role, isActive } = req.body as { name?: string; role?: string; isActive?: boolean };
   const user = await User.findByIdAndUpdate(
     req.params.id,
     { $set: { name, role, isActive } },
@@ -38,8 +38,9 @@ router.patch("/users/:id", guard, async (req: Request, res: Response) => {
 });
 
 router.delete("/users/:id", guard, async (req: Request, res: Response) => {
-  await User.findByIdAndDelete(req.params.id);
-  res.json({ message: "User deleted" });
+  const user = await User.findByIdAndDelete(req.params.id);
+  if (!user) return res.status(404).json({ message: "User not found" });
+  res.status(200).json({ message: "User deleted" });
 });
 
 // Sellers
@@ -57,7 +58,7 @@ router.post("/sellers/:id/suspend", guard, async (req: Request, res: Response) =
 
 // Products
 router.get("/products", guard, async (req: Request, res: Response) => {
-  const { q, approved } = req.query as any;
+  const { q, approved } = req.query as { q?: string; approved?: string };
   const filter: any = {};
   if (q) filter.title = new RegExp(q, "i");
   if (approved !== undefined) filter.approved = approved === "true";
@@ -78,10 +79,9 @@ router.post("/products/:id/feature", guard, async (req: Request, res: Response) 
 });
 
 router.delete("/products/:id", guard, async (req: Request, res: Response) => {
-  await Product.findByIdAndDelete(req.params.id);
-  res.json({ message: "Product deleted" });
+  const product = await Product.findByIdAndDelete(req.params.id);
+  if (!product) return res.status(404).json({ message: "Product not found" });
+  res.status(200).json({ message: "Product deleted" });
 });
 
 export default router;
-
-

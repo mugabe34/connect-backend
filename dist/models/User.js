@@ -41,10 +41,24 @@ const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const UserSchema = new mongoose_1.Schema({
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true },
-    password: { type: String, required: true, minlength: 6 },
+    password: { type: String, required: true, minlength: 6, select: false },
     role: { type: String, enum: ["buyer", "seller", "admin"], default: "buyer" },
     isActive: { type: Boolean, default: true }
-}, { timestamps: true });
+}, {
+    timestamps: true,
+    toJSON: {
+        transform: function (doc, ret) {
+            const { _id, __v, password, ...rest } = ret;
+            return { id: _id, ...rest };
+        }
+    },
+    toObject: {
+        transform: function (doc, ret) {
+            const { _id, __v, password, ...rest } = ret;
+            return { id: _id, ...rest };
+        }
+    }
+});
 UserSchema.pre("save", async function (next) {
     const user = this;
     if (!user.isModified("password"))
@@ -54,6 +68,9 @@ UserSchema.pre("save", async function (next) {
     next();
 });
 UserSchema.methods.comparePassword = async function (candidate) {
-    return bcryptjs_1.default.compare(candidate, this.password);
+    const user = await mongoose_1.default.model('User').findOne({ _id: this._id }).select('+password');
+    if (!user)
+        throw new Error('User not found during password comparison');
+    return bcryptjs_1.default.compare(candidate, user.password);
 };
 exports.default = mongoose_1.default.model("User", UserSchema);

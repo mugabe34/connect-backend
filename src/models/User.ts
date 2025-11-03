@@ -16,11 +16,25 @@ const UserSchema = new Schema<IUser>(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true },
-    password: { type: String, required: true, minlength: 6 },
+    password: { type: String, required: true, minlength: 6, select: false },
     role: { type: String, enum: ["buyer", "seller", "admin"], default: "buyer" },
     isActive: { type: Boolean, default: true }
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      transform: function (doc, ret) {
+        const { _id, __v, password, ...rest } = ret;
+        return { id: _id, ...rest };
+      }
+    },
+    toObject: {
+      transform: function (doc, ret) {
+        const { _id, __v, password, ...rest } = ret;
+        return { id: _id, ...rest };
+      }
+    }
+  }
 );
 
 UserSchema.pre("save", async function (next) {
@@ -32,7 +46,9 @@ UserSchema.pre("save", async function (next) {
 });
 
 UserSchema.methods.comparePassword = async function (candidate: string) {
-  return bcrypt.compare(candidate, this.password);
+  const user = await mongoose.model('User').findOne({ _id: this._id }).select('+password');
+  if (!user) throw new Error('User not found during password comparison');
+  return bcrypt.compare(candidate, user.password);
 };
 
 export default mongoose.model<IUser>("User", UserSchema);

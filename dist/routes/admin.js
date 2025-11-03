@@ -37,8 +37,10 @@ router.patch("/users/:id", guard, async (req, res) => {
     res.json(user);
 });
 router.delete("/users/:id", guard, async (req, res) => {
-    await User_1.default.findByIdAndDelete(req.params.id);
-    res.json({ message: "User deleted" });
+    const user = await User_1.default.findByIdAndDelete(req.params.id);
+    if (!user)
+        return res.status(404).json({ message: "User not found" });
+    res.status(200).json({ message: "User deleted" });
 });
 // Sellers
 router.post("/sellers/:id/approve", guard, async (req, res) => {
@@ -77,7 +79,9 @@ router.post("/products/:id/feature", guard, async (req, res) => {
     res.json(product);
 });
 router.delete("/products/:id", guard, async (req, res) => {
-    await Product_1.default.findByIdAndDelete(req.params.id);
-    res.json({ message: "Product deleted" });
+    const product = await Product_1.default.findByIdAndDelete(req.params.id);
+    if (!product)
+        return res.status(404).json({ message: "Product not found" });
+    res.status(200).json({ message: "Product deleted" });
 });
 exports.default = router;

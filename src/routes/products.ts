@@ -9,12 +9,18 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // Public: list approved products with search/filter
 router.get("/", async (req: Request, res: Response) => {
-  const { q, category, tag } = req.query as Record<string, string | undefined>;
+  const { q, category, tag, featured } = req.query as Record<string, string | undefined>;
   const filter: any = { approved: true };
   if (q) filter.title = { $regex: q, $options: "i" };
   if (category) filter.category = category;
   if (tag) filter.tags = tag;
+  if (featured) filter.featured = featured === 'true';
   const products = await Product.find(filter).sort({ createdAt: -1 }).limit(50).populate("seller", "name email");
+  res.json(products);
+});
+
+router.get("/seller/:id", async (req: Request, res: Response) => {
+  const products = await Product.find({ seller: req.params.id }).sort({ createdAt: -1 });
   res.json(products);
 });
 
@@ -28,8 +34,7 @@ router.post(
     const files = (req.files as Express.Multer.File[]) || [];
     if (files.length === 0) return res.status(400).json({ message: "At least one image is required" });
     const uploads = await Promise.all(
-      files.map(async (f) => {
-        const uploaded = await cloudinary.uploader.upload_stream({ folder: "connect/products" }, () => {})
+      files.map((f) => {
         return new Promise<{ url: string; publicId: string }>((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream({ folder: "connect/products" }, (err, result) => {
             if (err || !result) return reject(err);
@@ -40,7 +45,15 @@ router.post(
       })
     );
 
-    const { title, description, price, category, tags, contactEmail, contactPhone } = req.body as any;
+    const {
+      title,
+      description,
+      price,
+      category,
+      tags,
+      contactEmail,
+      contactPhone
+    } = req.body as Record<string, string>;
     const product = await Product.create({
       title,
       description,
@@ -85,7 +98,14 @@ router.put(
       );
     }
 
-    const { title, description, price, category, tags, removePublicIds } = req.body as any;
+    const {
+      title,
+      description,
+      price,
+      category,
+      tags,
+      removePublicIds
+    } = req.body as Record<string, string | string[]>;
     if (removePublicIds) {
       const toRemove = Array.isArray(removePublicIds) ? removePublicIds : String(removePublicIds).split(",");
       for (const id of toRemove) {
@@ -94,10 +114,10 @@ router.put(
       product.images = product.images.filter((img) => !toRemove.includes(img.publicId));
     }
 
-    product.title = title ?? product.title;
-    product.description = description ?? product.description;
-    product.price = price ? Number(price) : product.price;
-    product.category = category ?? product.category;
+    product.title = (Array.isArray(title) ? title[0] : title) ?? product.title;
+    product.description = (Array.isArray(description) ? description[0] : description) ?? product.description;
+    product.price = price ? Number(Array.isArray(price) ? price[0] : price) : product.price;
+    product.category = (Array.isArray(category) ? category[0] : category) ?? product.category;
     if (tags) product.tags = typeof tags === "string" ? tags.split(",").map((t: string) => t.trim()) : tags;
     if (newUploads.length) product.images.push(...newUploads);
     const saved = await product.save();
@@ -124,5 +144,3 @@ router.delete(
 );
 
 export default router;
-
-

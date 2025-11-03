@@ -2,13 +2,14 @@ import { Router, Request, Response } from "express";
 import { body, validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
 import User from "../models/User";
+import { requireAuth } from "../middleware/auth";
 
 const router = Router();
 
 const signToken = (id: string, role: string) =>
-  jwt.sign({ id, role }, process.env.JWT_SECRET as string, {
+  jwt.sign({ id, role }, process.env.JWT_SECRET!, {
     expiresIn: (process.env.JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"]) || "7d"
-  } as jwt.SignOptions);
+  });
 
 router.post(
   "/register",
@@ -27,7 +28,7 @@ router.post(
     const user = await User.create({ name, email, password, role: role || "buyer" });
     const token = signToken(user.id, user.role);
     res.cookie("token", token, { httpOnly: true, sameSite: "lax" });
-    return res.status(201).json({ user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+    return res.status(201).json({ user });
   }
 );
 
@@ -38,14 +39,14 @@ router.post(
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select("+password");
     if (!user) return res.status(401).json({ message: "Invalid credentials" });
     const ok = await user.comparePassword(password);
     if (!ok) return res.status(401).json({ message: "Invalid credentials" });
     if (!user.isActive) return res.status(403).json({ message: "Account deactivated" });
     const token = signToken(user.id, user.role);
     res.cookie("token", token, { httpOnly: true, sameSite: "lax" });
-    return res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+    return res.json({ user });
   }
 );
 
@@ -54,6 +55,12 @@ router.post("/logout", (_req, res) => {
   return res.json({ message: "Logged out" });
 });
 
+router.get("/me", requireAuth, async (req: Request, res: Response) => {
+  const user = await User.findById(req.user!.id);
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  res.json({ user });
+});
+
 export default router;
-
-

@@ -12,7 +12,7 @@ const router = (0, express_1.Router)();
 const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
 // Public: list approved products with search/filter
 router.get("/", async (req, res) => {
-    const { q, category, tag } = req.query;
+    const { q, category, tag, featured } = req.query;
     const filter = { approved: true };
     if (q)
         filter.title = { $regex: q, $options: "i" };
@@ -20,7 +20,13 @@ router.get("/", async (req, res) => {
         filter.category = category;
     if (tag)
         filter.tags = tag;
+    if (featured)
+        filter.featured = featured === 'true';
     const products = await Product_1.default.find(filter).sort({ createdAt: -1 }).limit(50).populate("seller", "name email");
+    res.json(products);
+});
+router.get("/seller/:id", async (req, res) => {
+    const products = await Product_1.default.find({ seller: req.params.id }).sort({ createdAt: -1 });
     res.json(products);
 });
 // Seller: create product with Cloudinary upload
@@ -80,10 +86,10 @@ router.put("/:id", auth_1.requireAuth, (0, auth_1.requireRole)("seller", "admin"
         }
         product.images = product.images.filter((img) => !toRemove.includes(img.publicId));
     }
-    product.title = title ?? product.title;
-    product.description = description ?? product.description;
-    product.price = price ? Number(price) : product.price;
-    product.category = category ?? product.category;
+    product.title = (Array.isArray(title) ? title[0] : title) ?? product.title;
+    product.description = (Array.isArray(description) ? description[0] : description) ?? product.description;
+    product.price = price ? Number(Array.isArray(price) ? price[0] : price) : product.price;
+    product.category = (Array.isArray(category) ? category[0] : category) ?? product.category;
     if (tags)
         product.tags = typeof tags === "string" ? tags.split(",").map((t) => t.trim()) : tags;
     if (newUploads.length)
