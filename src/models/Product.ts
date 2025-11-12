@@ -11,6 +11,7 @@ export interface IProduct extends Document {
   contact: { email: string; phone?: string };
   approved: boolean;
   featured: boolean;
+  location?: string; // seller location cached for fast filtering
 }
 
 const ProductSchema = new Schema<IProduct>(
@@ -32,7 +33,8 @@ const ProductSchema = new Schema<IProduct>(
       phone: String
     },
     approved: { type: Boolean, default: false },
-    featured: { type: Boolean, default: false }
+    featured: { type: Boolean, default: false },
+    location: { type: String }
   },
   { timestamps: true }
 );

@@ -56,7 +56,7 @@ async function start() {
         await mongoose_1.default.connect(mongoUri);
         console.log("MongoDB connected successfully.");
         await (0, seedAdmin_1.seedAdmin)().catch((e) => console.error("Admin seed error", e));
-        const port = Number(process.env.PORT) || 5001;
+        const port = Number(process.env.PORT) || 5000;
         app.listen(port, () => console.log(`API running on :${port}`));
     }
     catch (err) {

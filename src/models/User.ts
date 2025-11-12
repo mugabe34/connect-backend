@@ -9,6 +9,8 @@ export interface IUser extends Document {
   password: string;
   role: UserRole;
   isActive: boolean;
+  phone?: string;
+  location?: string; // district or similar
   comparePassword(candidate: string): Promise<boolean>;
 }
 
@@ -18,7 +20,9 @@ const UserSchema = new Schema<IUser>(
     email: { type: String, required: true, unique: true, lowercase: true },
     password: { type: String, required: true, minlength: 6, select: false },
     role: { type: String, enum: ["buyer", "seller", "admin"], default: "buyer" },
-    isActive: { type: Boolean, default: true }
+    isActive: { type: Boolean, default: true },
+    phone: { type: String },
+    location: { type: String },
   },
   {
     timestamps: true,

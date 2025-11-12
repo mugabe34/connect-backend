@@ -16,16 +16,18 @@ router.post("/register", [
     (0, express_validator_1.body)("name").notEmpty(),
     (0, express_validator_1.body)("email").isEmail(),
     (0, express_validator_1.body)("password").isLength({ min: 6 }),
-    (0, express_validator_1.body)("role").optional().isIn(["buyer", "seller"]) // prevent self-creating admin
+    (0, express_validator_1.body)("role").optional().isIn(["buyer", "seller"]), // prevent self-creating admin
+    (0, express_validator_1.body)("phone").optional().isString(),
+    (0, express_validator_1.body)("location").optional().isString()
 ], async (req, res) => {
     const errors = (0, express_validator_1.validationResult)(req);
     if (!errors.isEmpty())
         return res.status(400).json({ errors: errors.array() });
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, phone, location } = req.body;
     const exists = await User_1.default.findOne({ email });
     if (exists)
         return res.status(409).json({ message: "Email already in use" });
-    const user = await User_1.default.create({ name, email, password, role: role || "buyer" });
+    const user = await User_1.default.create({ name, email, password, role: role || "buyer", phone, location });
     const token = signToken(user.id, user.role);
     res.cookie("token", token, { httpOnly: true, sameSite: "lax" });
     return res.status(201).json({ user });

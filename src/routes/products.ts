@@ -3,19 +3,22 @@ import multer from "multer";
 import Product from "../models/Product";
 import cloudinary from "../utils/cloudinary";
 import { requireAuth, requireRole } from "../middleware/auth";
+import User from "../models/User";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Public: list approved products with search/filter
+// Public: list approved products with search/filter and location prioritization
 router.get("/", async (req: Request, res: Response) => {
-  const { q, category, tag, featured } = req.query as Record<string, string | undefined>;
+  const { q, category, tag, featured, location, limit } = req.query as Record<string, string | undefined>;
   const filter: any = { approved: true };
   if (q) filter.title = { $regex: q, $options: "i" };
   if (category) filter.category = category;
   if (tag) filter.tags = tag;
-  if (featured) filter.featured = featured === 'true';
-  const products = await Product.find(filter).sort({ createdAt: -1 }).limit(50).populate("seller", "name email");
+  if (featured) filter.featured = featured === "true";
+  if (location) filter.location = location; // optional filter
+  const lim = Number(limit) || 50;
+  const products = await Product.find(filter).sort({ createdAt: -1 }).limit(lim).populate("seller", "name email phone location");
   res.json(products);
 });
 
@@ -54,6 +57,9 @@ router.post(
       contactEmail,
       contactPhone
     } = req.body as Record<string, string>;
+
+    // fetch seller location to cache on product
+    const seller = await User.findById(req.user!.id);
     const product = await Product.create({
       title,
       description,
@@ -63,7 +69,8 @@ router.post(
       images: uploads,
       seller: req.user!.id,
       contact: { email: contactEmail, phone: contactPhone },
-      approved: req.user!.role === "admin" // auto-approve if admin creates
+      approved: req.user!.role === "admin",
+      location: seller?.location
     });
     res.status(201).json(product);
   }

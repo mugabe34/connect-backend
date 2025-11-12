@@ -17,15 +17,17 @@ router.post(
     body("name").notEmpty(),
     body("email").isEmail(),
     body("password").isLength({ min: 6 }),
-    body("role").optional().isIn(["buyer", "seller"]) // prevent self-creating admin
+    body("role").optional().isIn(["buyer", "seller"]), // prevent self-creating admin
+    body("phone").optional().isString(),
+    body("location").optional().isString()
   ],
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, phone, location } = req.body;
     const exists = await User.findOne({ email });
     if (exists) return res.status(409).json({ message: "Email already in use" });
-    const user = await User.create({ name, email, password, role: role || "buyer" });
+    const user = await User.create({ name, email, password, role: role || "buyer", phone, location });
     const token = signToken(user.id, user.role);
     res.cookie("token", token, { httpOnly: true, sameSite: "lax" });
     return res.status(201).json({ user });

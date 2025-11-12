@@ -8,11 +8,12 @@ const multer_1 = __importDefault(require("multer"));
 const Product_1 = __importDefault(require("../models/Product"));
 const cloudinary_1 = __importDefault(require("../utils/cloudinary"));
 const auth_1 = require("../middleware/auth");
+const User_1 = __importDefault(require("../models/User"));
 const router = (0, express_1.Router)();
 const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
-// Public: list approved products with search/filter
+// Public: list approved products with search/filter and location prioritization
 router.get("/", async (req, res) => {
-    const { q, category, tag, featured } = req.query;
+    const { q, category, tag, featured, location, limit } = req.query;
     const filter = { approved: true };
     if (q)
         filter.title = { $regex: q, $options: "i" };
@@ -21,8 +22,11 @@ router.get("/", async (req, res) => {
     if (tag)
         filter.tags = tag;
     if (featured)
-        filter.featured = featured === 'true';
-    const products = await Product_1.default.find(filter).sort({ createdAt: -1 }).limit(50).populate("seller", "name email");
+        filter.featured = featured === "true";
+    if (location)
+        filter.location = location; // optional filter
+    const lim = Number(limit) || 50;
+    const products = await Product_1.default.find(filter).sort({ createdAt: -1 }).limit(lim).populate("seller", "name email phone location");
     res.json(products);
 });
 router.get("/seller/:id", async (req, res) => {
@@ -34,8 +38,7 @@ router.post("/", auth_1.requireAuth, (0, auth_1.requireRole)("seller", "admin"),
     const files = req.files || [];
     if (files.length === 0)
         return res.status(400).json({ message: "At least one image is required" });
-    const uploads = await Promise.all(files.map(async (f) => {
-        const uploaded = await cloudinary_1.default.uploader.upload_stream({ folder: "connect/products" }, () => { });
+    const uploads = await Promise.all(files.map((f) => {
         return new Promise((resolve, reject) => {
             const stream = cloudinary_1.default.uploader.upload_stream({ folder: "connect/products" }, (err, result) => {
                 if (err || !result)
@@ -46,6 +49,8 @@ router.post("/", auth_1.requireAuth, (0, auth_1.requireRole)("seller", "admin"),
         });
     }));
     const { title, description, price, category, tags, contactEmail, contactPhone } = req.body;
+    // fetch seller location to cache on product
+    const seller = await User_1.default.findById(req.user.id);
     const product = await Product_1.default.create({
         title,
         description,
@@ -55,7 +60,8 @@ router.post("/", auth_1.requireAuth, (0, auth_1.requireRole)("seller", "admin"),
         images: uploads,
         seller: req.user.id,
         contact: { email: contactEmail, phone: contactPhone },
-        approved: req.user.role === "admin" // auto-approve if admin creates
+        approved: req.user.role === "admin",
+        location: seller?.location
     });
     res.status(201).json(product);
 });

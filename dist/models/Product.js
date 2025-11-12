@@ -52,6 +52,7 @@ const ProductSchema = new mongoose_1.Schema({
         phone: String
     },
     approved: { type: Boolean, default: false },
-    featured: { type: Boolean, default: false }
+    featured: { type: Boolean, default: false },
+    location: { type: String }
 }, { timestamps: true });
 exports.default = mongoose_1.default.model("Product", ProductSchema);
