@@ -26,15 +26,44 @@ router.get("/users", guard, async (req: Request, res: Response) => {
   res.json(users);
 });
 
+router.get("/users/:id", guard, async (req: Request, res: Response) => {
+  const user = await User.findById(req.params.id).select('+password');
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  // Do NOT return the hashed password to the client. Return user details only.
+  const safeUser = user.toObject();
+  delete (safeUser as any).password;
+  res.json(safeUser);
+});
+
 router.patch("/users/:id", guard, async (req: Request, res: Response) => {
-  const { name, role, isActive } = req.body as { name?: string; role?: string; isActive?: boolean };
+  const { name, role, isActive, email } = req.body as { name?: string; role?: string; isActive?: boolean; email?: string };
+  const update: any = {};
+  if (name !== undefined) update.name = name;
+  if (role !== undefined) update.role = role;
+  if (isActive !== undefined) update.isActive = isActive;
+  if (email !== undefined) update.email = email;
   const user = await User.findByIdAndUpdate(
     req.params.id,
-    { $set: { name, role, isActive } },
+    { $set: update },
     { new: true }
-  );
+  ).select('+password');
   if (!user) return res.status(404).json({ message: "User not found" });
-  res.json(user);
+  const safeUser = user.toObject();
+  delete (safeUser as any).password;
+  res.json(safeUser);
+});
+
+// Admin can reset a user's password (securely set a new password)
+router.patch('/users/:id/password', guard, async (req: Request, res: Response) => {
+  const { password } = req.body as { password?: string };
+  if (!password || password.length <6) return res.status(400).json({ message: 'Password must be at least6 characters' });
+  const user = await User.findById(req.params.id).select('+password');
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  user.password = password as any; // will be hashed by pre-save hook
+  await user.save();
+  const safeUser = user.toObject();
+  delete (safeUser as any).password;
+  res.json({ message: 'Password updated', user: safeUser });
 });
 
 router.delete("/users/:id", guard, async (req: Request, res: Response) => {
