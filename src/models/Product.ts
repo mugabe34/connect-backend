@@ -11,6 +11,8 @@ export interface IProduct extends Document {
   contact: { email: string; phone?: string };
   approved: boolean;
   featured: boolean;
+  likes: number;
+  likedBy: Types.ObjectId[];
   location?: string; // seller location cached for fast filtering
 }
 
@@ -34,9 +36,25 @@ const ProductSchema = new Schema<IProduct>(
     },
     approved: { type: Boolean, default: false },
     featured: { type: Boolean, default: false },
+    likes: { type: Number, default: 0 },
+    likedBy: [{ type: Schema.Types.ObjectId, ref: "User" }],
     location: { type: String }
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      transform: function (_doc, ret) {
+        const { _id, __v, ...rest } = ret;
+        return { id: _id, ...rest };
+      }
+    },
+    toObject: {
+      transform: function (_doc, ret) {
+        const { _id, __v, ...rest } = ret;
+        return { id: _id, ...rest };
+      }
+    }
+  }
 );
 
 export default mongoose.model<IProduct>("Product", ProductSchema);

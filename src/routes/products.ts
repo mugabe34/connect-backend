@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import mongoose from "mongoose";
 import Product from "../models/Product";
 import { requireAuth, requireRole } from "../middleware/auth";
 import User from "../models/User";
@@ -26,16 +27,87 @@ const upload = multer({ storage });
 
 // Public: list approved products with search/filter and location prioritization
 router.get("/", async (req: Request, res: Response) => {
- const { q, category, tag, featured, location, limit } = req.query as Record<string, string | undefined>;
- const filter: any = { approved: true };
- if (q) filter.title = { $regex: q, $options: "i" };
- if (category) filter.category = category;
- if (tag) filter.tags = tag;
- if (featured) filter.featured = featured === "true";
- if (location) filter.location = location; // optional filter
- const lim = Number(limit) ||50;
- const products = await Product.find(filter).sort({ createdAt: -1 }).limit(lim).populate("seller", "name email phone location");
- res.json(products);
+  const { q, category, tag, featured, location, limit, seller } = req.query as Record<string, string | undefined>;
+  const filter: any = { approved: true };
+  if (seller) filter.seller = seller;
+  if (q) filter.title = { $regex: q, $options: "i" };
+  if (category) filter.category = category;
+  if (tag) filter.tags = tag;
+  if (featured) filter.featured = featured === "true";
+  if (location) filter.location = location; // optional filter
+  const lim = Number(limit) || 50;
+  const products = await Product.find(filter)
+    .sort({ createdAt: -1 })
+    .limit(lim)
+    .populate("seller", "name email phone location");
+  res.json(products);
+});
+
+router.get(
+  "/seller/:id/summary",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const sellerId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(sellerId)) {
+      return res.status(400).json({ message: "Invalid seller id" });
+    }
+    if (req.user!.role !== "admin" && req.user!.id !== sellerId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const seller = await User.findById(sellerId).select("name email role phone location createdAt");
+    if (!seller) return res.status(404).json({ message: "Seller not found" });
+    const sellerObjectId = new mongoose.Types.ObjectId(sellerId);
+    const [topLiked, recentUploads, aggregates] = await Promise.all([
+      Product.find({ seller: sellerObjectId }).sort({ likes: -1, createdAt: -1 }).limit(5),
+      Product.find({ seller: sellerObjectId }).sort({ createdAt: -1 }).limit(5),
+      Product.aggregate([
+        { $match: { seller: sellerObjectId } },
+        {
+          $group: {
+            _id: "$seller",
+            totalProducts: { $sum: 1 },
+            totalLikes: { $sum: "$likes" },
+            approvedProducts: { $sum: { $cond: ["$approved", 1, 0] } }
+          }
+        }
+      ])
+    ]);
+    const statsAgg = aggregates[0] ?? { totalProducts: 0, totalLikes: 0, approvedProducts: 0 };
+    const stats = {
+      totalProducts: statsAgg.totalProducts,
+      totalLikes: statsAgg.totalLikes,
+      approvedProducts: statsAgg.approvedProducts,
+      pendingProducts: Math.max(0, statsAgg.totalProducts - statsAgg.approvedProducts)
+    };
+    res.json({ seller, topLiked, recentUploads, stats });
+  }
+);
+
+router.get("/seller/:id/profile", async (req: Request, res: Response) => {
+  const sellerId = req.params.id;
+  if (!mongoose.Types.ObjectId.isValid(sellerId)) {
+    return res.status(400).json({ message: "Invalid seller id" });
+  }
+  const seller = await User.findById(sellerId).select("name email role phone location createdAt");
+  if (!seller) return res.status(404).json({ message: "Seller not found" });
+  const analytics = await Product.aggregate([
+    { $match: { seller: new mongoose.Types.ObjectId(sellerId), approved: true } },
+    {
+      $group: {
+        _id: "$seller",
+        approvedProducts: { $sum: 1 },
+        totalLikes: { $sum: "$likes" }
+      }
+    }
+  ]);
+  const stats = analytics[0] ?? { approvedProducts: 0, totalLikes: 0 };
+  res.json({
+    seller,
+    stats: {
+      approvedProducts: stats.approvedProducts,
+      totalLikes: stats.totalLikes
+    }
+  });
 });
 
 router.get("/seller/:id", async (req: Request, res: Response) => {
@@ -150,6 +222,38 @@ router.delete(
     }
     await product.deleteOne();
     res.json({ message: "Deleted" });
+  }
+);
+
+router.post(
+  "/:id/like",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+    if (!product.approved && req.user!.role !== "admin" && String(product.seller) !== req.user!.id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    if (!product.likedBy) {
+      product.likedBy = [];
+    }
+    const userId = req.user!.id;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const existingIndex = product.likedBy.findIndex((id) => String(id) === userId);
+    let liked: boolean;
+    if (existingIndex > -1) {
+      product.likedBy.splice(existingIndex, 1);
+      liked = false;
+    } else {
+      product.likedBy.push(userObjectId);
+      liked = true;
+    }
+    product.likes = product.likedBy.length;
+    await product.save();
+    res.json({ product, liked });
   }
 );
 
