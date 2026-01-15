@@ -257,4 +257,23 @@ router.post(
   }
 );
 
+router.get(
+  "/liked/me",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const products = await Product.find({
+      likedBy: userObjectId,
+      approved: true
+    })
+      .sort({ createdAt: -1 })
+      .populate("seller", "name email phone location");
+    res.json(products);
+  }
+);
+
 export default router;
