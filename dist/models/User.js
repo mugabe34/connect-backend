@@ -46,6 +46,8 @@ const UserSchema = new mongoose_1.Schema({
     isActive: { type: Boolean, default: true },
     phone: { type: String },
     location: { type: String },
+    avatarUrl: { type: String },
+    bio: { type: String },
 }, {
     timestamps: true,
     toJSON: {

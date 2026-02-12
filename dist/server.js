@@ -9,9 +9,13 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const cors_1 = __importDefault(require("cors"));
 const morgan_1 = __importDefault(require("morgan"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
+const path_1 = __importDefault(require("path"));
 const auth_1 = __importDefault(require("./routes/auth"));
 const products_1 = __importDefault(require("./routes/products"));
 const admin_1 = __importDefault(require("./routes/admin"));
+const messages_1 = __importDefault(require("./routes/messages"));
+const uploads_1 = __importDefault(require("./routes/uploads"));
+const notifications_1 = __importDefault(require("./routes/notifications"));
 const seedAdmin_1 = require("./utils/seedAdmin");
 const User_1 = __importDefault(require("./models/User"));
 const Product_1 = __importDefault(require("./models/Product"));
@@ -27,9 +31,14 @@ app.use(express_1.default.json({ limit: "10mb" }));
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use((0, cookie_parser_1.default)());
 app.use((0, morgan_1.default)("dev"));
+// Serve static files from uploads folder
+app.use("/uploads", express_1.default.static(path_1.default.join(__dirname, "../uploads")));
 app.use("/api/auth", auth_1.default);
 app.use("/api/products", products_1.default);
 app.use("/api/admin", admin_1.default);
+app.use("/api/messages", messages_1.default);
+app.use("/api/uploads", uploads_1.default);
+app.use("/api/notifications", notifications_1.default);
 app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", service: "connect-backend" });
 });
@@ -42,10 +51,19 @@ app.get("/api/stats", async (_req, res) => {
 });
 app.get("/api/contact-info", (_req, res) => {
     res.json({
-        email: "mugabeherve7@gmail.com",
+        email: "mugabeherve7@gmail.com && hirwajules2000@gmail.comc",
         phone: "+250 781 908 314",
         location: "Kigali, Rwanda",
     });
+});
+// 404 handler for API routes
+app.use((_req, res) => {
+    res.status(404).json({ message: "Endpoint not found" });
+});
+// Error handler
+app.use((err, _req, res, _next) => {
+    console.error(err);
+    res.status(err.status || 500).json({ message: err.message || "Internal server error" });
 });
 async function start() {
     try {

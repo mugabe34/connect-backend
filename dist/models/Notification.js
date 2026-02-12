@@ -34,41 +34,18 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const ProductSchema = new mongoose_1.Schema({
-    title: { type: String, required: true, trim: true },
-    description: { type: String, required: true },
-    price: { type: Number, required: true, min: 0 },
-    images: [
-        {
-            url: { type: String, required: true },
-            publicId: { type: String, required: true }
-        }
-    ],
-    category: String,
-    tags: [String],
-    seller: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true },
-    contact: {
-        email: { type: String, required: true },
-        phone: String
-    },
-    approved: { type: Boolean, default: false },
-    featured: { type: Boolean, default: false },
-    likes: { type: Number, default: 0 },
-    likedBy: [{ type: mongoose_1.Schema.Types.ObjectId, ref: "User" }],
-    location: { type: String }
-}, {
-    timestamps: true,
-    toJSON: {
-        transform: function (_doc, ret) {
-            const { _id, __v, ...rest } = ret;
-            return { id: _id, ...rest };
-        }
-    },
-    toObject: {
-        transform: function (_doc, ret) {
-            const { _id, __v, ...rest } = ret;
-            return { id: _id, ...rest };
-        }
+const NotificationSchema = new mongoose_1.Schema({
+    sender: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
+    recipient: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true },
+    type: { type: String, enum: ["like", "message", "system"], default: "system" },
+    message: { type: String, required: true },
+    product: { type: mongoose_1.Schema.Types.ObjectId, ref: "Product" },
+    read: { type: Boolean, default: false },
+}, { timestamps: true });
+NotificationSchema.set("toJSON", {
+    transform: (_doc, ret) => {
+        const { _id, __v, ...rest } = ret;
+        return { id: _id, ...rest };
     }
 });
-exports.default = mongoose_1.default.model("Product", ProductSchema);
+exports.default = mongoose_1.default.model("Notification", NotificationSchema);

@@ -4,9 +4,13 @@ import mongoose from "mongoose";
 import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
+import path from "path";
 import authRoutes from "./routes/auth";
 import productRoutes from "./routes/products";
 import adminRoutes from "./routes/admin";
+import messageRoutes from "./routes/messages";
+import uploadRoutes from "./routes/uploads";
+import notificationRoutes from "./routes/notifications";
 import { seedAdmin } from "./utils/seedAdmin";
 import User from "./models/User";
 import Product from "./models/Product";
@@ -26,9 +30,16 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(morgan("dev"));
+
+// Serve static files from uploads folder
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/messages", messageRoutes);
+app.use("/api/uploads", uploadRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "connect-backend" });
@@ -44,10 +55,21 @@ app.get("/api/stats", async (_req, res) => {
 
 app.get("/api/contact-info", (_req, res) => {
   res.json({
-    email: "mugabeherve7@gmail.com",
+    email: "mugabeherve7@gmail.com && hirwajules2000@gmail.comc",
     phone: "+250 781 908 314",
     location: "Kigali, Rwanda",
   });
+});
+
+// 404 handler for API routes
+app.use((_req, res) => {
+  res.status(404).json({ message: "Endpoint not found" });
+});
+
+// Error handler
+app.use((err: any, _req: any, res: any, _next: any) => {
+  console.error(err);
+  res.status(err.status || 500).json({ message: err.message || "Internal server error" });
 });
 
 async function start() {

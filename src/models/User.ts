@@ -11,6 +11,8 @@ export interface IUser extends Document {
   isActive: boolean;
   phone?: string;
   location?: string; // district or similar
+  avatarUrl?: string;
+  bio?: string;
   comparePassword(candidate: string): Promise<boolean>;
 }
 
@@ -23,6 +25,8 @@ const UserSchema = new Schema<IUser>(
     isActive: { type: Boolean, default: true },
     phone: { type: String },
     location: { type: String },
+    avatarUrl: { type: String },
+    bio: { type: String },
   },
   {
     timestamps: true,

@@ -2,18 +2,18 @@ import { Router, Request, Response } from "express";
 import { requireAuth, requireRole } from "../middleware/auth";
 import User from "../models/User";
 import Product from "../models/Product";
+import Message from "../models/Message";
 
 const router = Router();
 const guard = [requireAuth, requireRole("admin")];
 
 router.get("/dashboard", guard, async (_req: Request, res: Response) => {
-  const [totalUsers, totalProducts, totalOrders, pendingApprovals] = await Promise.all([
+  const [totalUsers, totalProducts, pendingApprovals] = await Promise.all([
     User.countDocuments({}),
     Product.countDocuments({}),
-    Promise.resolve(0), // orders placeholder, to be implemented later
     Product.countDocuments({ approved: false })
   ]);
-  res.json({ totalUsers, totalProducts, totalOrders, pendingApprovals });
+  res.json({ totalUsers, totalProducts, pendingApprovals });
 });
 
 // Users
@@ -23,7 +23,18 @@ router.get("/users", guard, async (req: Request, res: Response) => {
   if (q) filter.$or = [{ name: new RegExp(q, "i") }, { email: new RegExp(q, "i") }];
   if (role) filter.role = role;
   const users = await User.find(filter).sort({ createdAt: -1 }).limit(200);
-  res.json(users);
+  const ids = users.map((u) => u._id);
+  const counts = await Product.aggregate([
+    { $match: { seller: { $in: ids } } },
+    { $group: { _id: "$seller", totalProducts: { $sum: 1 } } }
+  ]);
+  const countMap = new Map<string, number>();
+  counts.forEach((c) => countMap.set(String(c._id), c.totalProducts));
+  const withCounts = users.map((u) => {
+    const obj = u.toObject();
+    return { ...obj, productCount: countMap.get(String(u._id)) || 0 };
+  });
+  res.json(withCounts);
 });
 
 router.get("/users/:id", guard, async (req: Request, res: Response) => {
@@ -35,13 +46,39 @@ router.get("/users/:id", guard, async (req: Request, res: Response) => {
   res.json(safeUser);
 });
 
+// Create a user (admin only)
+router.post("/users", guard, async (req: Request, res: Response) => {
+  const { name, email, password, role, phone, location, bio } = req.body as any;
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: "Name, email and password are required" });
+  }
+  const exists = await User.findOne({ email });
+  if (exists) return res.status(409).json({ message: "Email already exists" });
+  const user = await User.create({
+    name,
+    email,
+    password,
+    role: role || "buyer",
+    phone,
+    location,
+    bio,
+  });
+  const safeUser = user.toObject();
+  delete (safeUser as any).password;
+  res.status(201).json(safeUser);
+});
+
 router.patch("/users/:id", guard, async (req: Request, res: Response) => {
-  const { name, role, isActive, email } = req.body as { name?: string; role?: string; isActive?: boolean; email?: string };
+  const { name, role, isActive, email, phone, location, bio, avatarUrl } = req.body as { name?: string; role?: string; isActive?: boolean; email?: string; phone?: string; location?: string; bio?: string; avatarUrl?: string };
   const update: any = {};
   if (name !== undefined) update.name = name;
   if (role !== undefined) update.role = role;
   if (isActive !== undefined) update.isActive = isActive;
   if (email !== undefined) update.email = email;
+  if (phone !== undefined) update.phone = phone;
+  if (location !== undefined) update.location = location;
+  if (bio !== undefined) update.bio = bio;
+  if (avatarUrl !== undefined) update.avatarUrl = avatarUrl;
   const user = await User.findByIdAndUpdate(
     req.params.id,
     { $set: update },
@@ -70,6 +107,27 @@ router.delete("/users/:id", guard, async (req: Request, res: Response) => {
   const user = await User.findByIdAndDelete(req.params.id);
   if (!user) return res.status(404).json({ message: "User not found" });
   res.status(200).json({ message: "User deleted" });
+});
+
+// Admin send message to a seller
+router.post("/users/:id/message", guard, async (req: Request, res: Response) => {
+  const { subject, body } = req.body as { subject?: string; body?: string };
+  if (!body || body.trim().length === 0) {
+    return res.status(400).json({ message: "Message body is required" });
+  }
+  const recipient = await User.findById(req.params.id);
+  if (!recipient) return res.status(404).json({ message: "User not found" });
+  if (recipient.role !== "seller") return res.status(400).json({ message: "Messages can only be sent to sellers" });
+
+  const message = await Message.create({
+    sender: req.user!.id,
+    recipient: recipient.id,
+    subject,
+    body,
+    fromAdmin: true,
+  });
+
+  res.status(201).json({ message: "Message sent", data: message });
 });
 
 // Sellers

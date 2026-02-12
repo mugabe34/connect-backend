@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import mongoose from "mongoose";
 import Product from "../models/Product";
+import Notification from "../models/Notification";
 import { requireAuth, requireRole } from "../middleware/auth";
 import User from "../models/User";
 
@@ -124,8 +125,9 @@ router.post(
  async (req: Request, res: Response) => {
  const files = (req.files as Express.Multer.File[]) || [];
  if (files.length ===0) return res.status(400).json({ message: "At least one image is required" });
+ const hostBase = `${req.protocol}://${req.get("host")}`;
  const uploads = files.map((f) => ({
- url: `/uploads/${f.filename}`,
+ url: `${hostBase}/uploads/${f.filename}`,
  publicId: f.filename
  }));
 
@@ -170,10 +172,11 @@ router.put(
       return res.status(403).json({ message: "Forbidden" });
 
     const files = (req.files as Express.Multer.File[]) || [];
+    const hostBase = `${req.protocol}://${req.get("host")}`;
     let newUploads: { url: string; publicId: string }[] = [];
     if (files.length) {
       newUploads = files.map((f) => ({
-        url: `/uploads/${f.filename}`,
+        url: `${hostBase}/uploads/${f.filename}`,
         publicId: f.filename
       }));
     }
@@ -250,6 +253,19 @@ router.post(
     } else {
       product.likedBy.push(userObjectId);
       liked = true;
+      // Create notification for the seller when their product is liked
+      try {
+        await Notification.create({
+          recipient: product.seller,
+          sender: userObjectId,
+          product: product._id,
+          type: 'like',
+          message: `Someone liked your product: ${product.title}`,
+          read: false
+        });
+      } catch (err) {
+        console.error('Error creating notification:', err);
+      }
     }
     product.likes = product.likedBy.length;
     await product.save();
