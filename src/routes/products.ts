@@ -142,21 +142,22 @@ router.post(
  } = req.body as Record<string, string>;
 
  // fetch seller location to cache on product
- const seller = await User.findById(req.user!.id);
- const product = await Product.create({
- title,
- description,
- price: Number(price),
- category,
- tags: typeof tags === "string" ? tags.split(",").map((t: string) => t.trim()) : tags,
- images: uploads,
- seller: req.user!.id,
- contact: { email: contactEmail, phone: contactPhone },
- approved: req.user!.role === "admin",
- location: seller?.location
- });
- res.status(201).json(product);
- }
+  const seller = await User.findById(req.user!.id);
+  const product = await Product.create({
+  title,
+  description,
+  price: Number(price),
+  category,
+  tags: typeof tags === "string" ? tags.split(",").map((t: string) => t.trim()) : tags,
+  images: uploads,
+  seller: req.user!.id,
+  contact: { email: contactEmail, phone: contactPhone },
+  // Auto-approve products on upload; no admin approval required.
+  approved: true,
+  location: seller?.location
+  });
+  res.status(201).json(product);
+  }
 );
 
 // Seller: update own product

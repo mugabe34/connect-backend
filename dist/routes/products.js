@@ -140,7 +140,8 @@ router.post("/", auth_1.requireAuth, (0, auth_1.requireRole)("seller", "admin"),
         images: uploads,
         seller: req.user.id,
         contact: { email: contactEmail, phone: contactPhone },
-        approved: req.user.role === "admin",
+        // Auto-approve products on upload; no admin approval required.
+        approved: true,
         location: seller?.location
     });
     res.status(201).json(product);

@@ -51,7 +51,7 @@ const ProductSchema = new mongoose_1.Schema({
         email: { type: String, required: true },
         phone: String
     },
-    approved: { type: Boolean, default: false },
+    approved: { type: Boolean, default: true },
     featured: { type: Boolean, default: false },
     likes: { type: Number, default: 0 },
     likedBy: [{ type: mongoose_1.Schema.Types.ObjectId, ref: "User" }],

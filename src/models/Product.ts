@@ -34,7 +34,7 @@ const ProductSchema = new Schema<IProduct>(
       email: { type: String, required: true },
       phone: String
     },
-    approved: { type: Boolean, default: false },
+    approved: { type: Boolean, default: true },
     featured: { type: Boolean, default: false },
     likes: { type: Number, default: 0 },
     likedBy: [{ type: Schema.Types.ObjectId, ref: "User" }],
