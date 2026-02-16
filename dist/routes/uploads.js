@@ -36,8 +36,9 @@ const upload = (0, multer_1.default)({
 router.post("/avatar", auth_1.requireAuth, upload.single("avatar"), async (req, res) => {
     if (!req.file)
         return res.status(400).json({ message: "Avatar file is required" });
-    const hostBase = `${req.protocol}://${req.get("host")}`;
-    const url = `${hostBase}/uploads/${req.file.filename}`;
+    // Return a relative URL so the frontend can reliably prefix with its configured API base.
+    // This avoids mixed-content issues when the app is served behind a proxy/HTTPS terminator.
+    const url = `/uploads/${req.file.filename}`;
     res.status(201).json({ url });
 });
 exports.default = router;
