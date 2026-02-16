@@ -21,12 +21,15 @@ const User_1 = __importDefault(require("./models/User"));
 const Product_1 = __importDefault(require("./models/Product"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
+// Enable secure cookies behind proxies (Render, Railway, Nginrok, etc.)
+app.set("trust proxy", 1);
 const clientUrl = process.env.CLIENT_URL;
 if (!clientUrl) {
     console.warn("CLIENT_URL environment variable not set. CORS may not work as expected.");
 }
-// Using a specific origin is required when credentials: true
-app.use((0, cors_1.default)({ origin: clientUrl, credentials: true }));
+// Using a specific origin is required when credentials: true.
+// In local/dev (when CLIENT_URL is not set), reflect the request origin.
+app.use((0, cors_1.default)({ origin: clientUrl || true, credentials: true }));
 app.use(express_1.default.json({ limit: "10mb" }));
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use((0, cookie_parser_1.default)());

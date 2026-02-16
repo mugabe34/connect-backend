@@ -13,6 +13,25 @@ const router = (0, express_1.Router)();
 const signToken = (id, role) => jsonwebtoken_1.default.sign({ id, role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d"
 });
+function getTokenCookieOptions(req) {
+    const daysRaw = process.env.JWT_COOKIE_DAYS || "7";
+    const days = Number.isFinite(Number(daysRaw)) ? Number(daysRaw) : 7;
+    const maxAge = Math.max(1, days) * 24 * 60 * 60 * 1000;
+    const proto = String(req.headers["x-forwarded-proto"] || "");
+    const isHttps = req.secure || proto.includes("https");
+    const isProd = process.env.NODE_ENV === "production";
+    const secure = isProd ? isHttps : false;
+    // If the cookie is marked secure (HTTPS), allow cross-site (e.g., separate frontend domain).
+    // Otherwise, keep it Lax for local/dev.
+    const sameSite = secure ? "none" : "lax";
+    return {
+        httpOnly: true,
+        secure,
+        sameSite,
+        maxAge,
+        path: "/",
+    };
+}
 // Session helper (avoids 401 spam in the frontend console)
 router.get("/session", async (req, res) => {
     const token = req.cookies?.token ||
@@ -54,7 +73,7 @@ router.post("/register", [
         location
     });
     const token = signToken(user.id, user.role);
-    res.cookie("token", token, { httpOnly: true, sameSite: "lax" });
+    res.cookie("token", token, getTokenCookieOptions(req));
     return res.status(201).json({ user });
 });
 router.post("/login", [(0, express_validator_1.body)("email").isEmail(), (0, express_validator_1.body)("password").isString()], async (req, res) => {
@@ -71,11 +90,12 @@ router.post("/login", [(0, express_validator_1.body)("email").isEmail(), (0, exp
     if (!user.isActive)
         return res.status(403).json({ message: "Account deactivated" });
     const token = signToken(user.id, user.role);
-    res.cookie("token", token, { httpOnly: true, sameSite: "lax" });
+    res.cookie("token", token, getTokenCookieOptions(req));
     return res.json({ user });
 });
-router.post("/logout", (_req, res) => {
-    res.clearCookie("token");
+router.post("/logout", (req, res) => {
+    const opts = getTokenCookieOptions(req);
+    res.clearCookie("token", { path: opts.path, sameSite: opts.sameSite, secure: opts.secure });
     return res.json({ message: "Logged out" });
 });
 router.get("/me", auth_1.requireAuth, async (req, res) => {
@@ -87,7 +107,7 @@ router.get("/me", auth_1.requireAuth, async (req, res) => {
 });
 // Update profile (name, bio, avatarUrl)
 router.patch("/me", auth_1.requireAuth, async (req, res) => {
-    const { name, bio, avatarUrl } = req.body;
+    const { name, bio, avatarUrl, phone, location } = req.body;
     const update = {};
     if (name !== undefined)
         update.name = name;
@@ -95,6 +115,10 @@ router.patch("/me", auth_1.requireAuth, async (req, res) => {
         update.bio = bio;
     if (avatarUrl !== undefined)
         update.avatarUrl = avatarUrl;
+    if (phone !== undefined)
+        update.phone = phone;
+    if (location !== undefined)
+        update.location = location;
     const user = await User_1.default.findByIdAndUpdate(req.user.id, { $set: update }, { new: true });
     if (!user)
         return res.status(404).json({ message: "User not found" });
@@ -169,7 +193,7 @@ router.post("/google", async (req, res) => {
         if (!user.isActive)
             return res.status(403).json({ message: "Account deactivated" });
         const token = signToken(user.id, user.role);
-        res.cookie("token", token, { httpOnly: true, sameSite: "lax" });
+        res.cookie("token", token, getTokenCookieOptions(req));
         return res.json({ user });
     }
     catch (err) {

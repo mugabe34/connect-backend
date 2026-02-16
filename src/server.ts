@@ -19,13 +19,17 @@ dotenv.config();
 
 const app = express();
 
+// Enable secure cookies behind proxies (Render, Railway, Nginrok, etc.)
+app.set("trust proxy", 1);
+
 const clientUrl = process.env.CLIENT_URL;
 if (!clientUrl) {
   console.warn("CLIENT_URL environment variable not set. CORS may not work as expected.");
 }
 
-// Using a specific origin is required when credentials: true
-app.use(cors({ origin: clientUrl, credentials: true }));
+// Using a specific origin is required when credentials: true.
+// In local/dev (when CLIENT_URL is not set), reflect the request origin.
+app.use(cors({ origin: clientUrl || true, credentials: true }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
