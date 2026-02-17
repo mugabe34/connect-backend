@@ -165,6 +165,7 @@ router.post("/google", async (req, res) => {
         if (!email)
             return res.status(400).json({ message: "Google token missing email" });
         const desiredRole = role === "seller" ? "seller" : "buyer";
+        let isNewUser = false;
         let user = await User_1.default.findOne({ email });
         if (!user) {
             if (desiredRole === "seller" && !location) {
@@ -179,6 +180,7 @@ router.post("/google", async (req, res) => {
                 location: location || undefined,
                 avatarUrl: picture
             });
+            isNewUser = true;
         }
         else {
             // If user is buyer but signs in as seller, allow upgrading.
@@ -194,7 +196,7 @@ router.post("/google", async (req, res) => {
             return res.status(403).json({ message: "Account deactivated" });
         const token = signToken(user.id, user.role);
         res.cookie("token", token, getTokenCookieOptions(req));
-        return res.json({ user });
+        return res.json({ user, isNewUser });
     }
     catch (err) {
         console.error("Google auth error", err);

@@ -188,6 +188,7 @@ router.post("/google", async (req: Request, res: Response) => {
 
     const desiredRole: "buyer" | "seller" = role === "seller" ? "seller" : "buyer";
 
+    let isNewUser = false;
     let user = await User.findOne({ email });
     if (!user) {
       if (desiredRole === "seller" && !location) {
@@ -202,6 +203,7 @@ router.post("/google", async (req: Request, res: Response) => {
         location: location || undefined,
         avatarUrl: picture
       });
+      isNewUser = true;
     } else {
       // If user is buyer but signs in as seller, allow upgrading.
       if (desiredRole === "seller" && user.role === "buyer") user.role = "seller";
@@ -214,7 +216,7 @@ router.post("/google", async (req: Request, res: Response) => {
 
     const token = signToken(user.id, user.role);
     res.cookie("token", token, getTokenCookieOptions(req));
-    return res.json({ user });
+    return res.json({ user, isNewUser });
   } catch (err) {
     console.error("Google auth error", err);
     return res.status(500).json({ message: "Google sign-in failed" });
