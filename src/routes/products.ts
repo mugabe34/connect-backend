@@ -121,7 +121,7 @@ router.post(
  "/",
  requireAuth,
  requireRole("seller", "admin"),
- upload.array("images",6),
+ upload.array("images", 4),
  async (req: Request, res: Response) => {
  const files = (req.files as Express.Multer.File[]) || [];
  if (files.length ===0) return res.status(400).json({ message: "At least one image is required" });
@@ -163,7 +163,7 @@ router.put(
   "/:id",
   requireAuth,
   requireRole("seller", "admin"),
-  upload.array("newImages", 6),
+  upload.array("newImages", 4),
   async (req: Request, res: Response) => {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: "Not found" });

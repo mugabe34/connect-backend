@@ -57,7 +57,9 @@ router.patch("/users/:id", guard, async (req: Request, res: Response) => {
 // Admin can reset a user's password (securely set a new password)
 router.patch('/users/:id/password', guard, async (req: Request, res: Response) => {
   const { password } = req.body as { password?: string };
-  if (!password || password.length <6) return res.status(400).json({ message: 'Password must be at least6 characters' });
+  if (password === undefined || password === null || String(password).length === 0) {
+    return res.status(400).json({ message: 'Password is required' });
+  }
   const user = await User.findById(req.params.id).select('+password');
   if (!user) return res.status(404).json({ message: 'User not found' });
   user.password = password as any; // will be hashed by pre-save hook
