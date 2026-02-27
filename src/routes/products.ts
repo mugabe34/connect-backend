@@ -125,9 +125,8 @@ router.post(
  async (req: Request, res: Response) => {
  const files = (req.files as Express.Multer.File[]) || [];
  if (files.length ===0) return res.status(400).json({ message: "At least one image is required" });
- const hostBase = `${req.protocol}://${req.get("host")}`;
  const uploads = files.map((f) => ({
- url: `${hostBase}/uploads/${f.filename}`,
+ url: `/uploads/${f.filename}`,
  publicId: f.filename
  }));
 
@@ -173,11 +172,10 @@ router.put(
       return res.status(403).json({ message: "Forbidden" });
 
     const files = (req.files as Express.Multer.File[]) || [];
-    const hostBase = `${req.protocol}://${req.get("host")}`;
     let newUploads: { url: string; publicId: string }[] = [];
     if (files.length) {
       newUploads = files.map((f) => ({
-        url: `${hostBase}/uploads/${f.filename}`,
+        url: `/uploads/${f.filename}`,
         publicId: f.filename
       }));
     }
