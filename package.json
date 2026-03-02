@@ -3,11 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-  "scripts": {
-  "build": "tsc -p .",
-  "start": "node dist/server.js",
-  "test": "echo \"Error: no test specified\" && exit 1"
-}
+    "build": "tsc -p .",
+    "start": "node dist/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
