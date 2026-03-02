@@ -73,7 +73,14 @@ async function start() {
         if (!process.env.JWT_SECRET) {
             throw new Error("FATAL ERROR: JWT_SECRET is not defined.");
         }
-        const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/connect";
+        const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
+        if (!mongoUri) {
+            const isProd = process.env.NODE_ENV === "production";
+            if (isProd) {
+                throw new Error("FATAL ERROR: MONGO_URI/MONGODB_URI is not set. Configure it in your hosting provider.");
+            }
+            throw new Error("FATAL ERROR: MONGO_URI/MONGODB_URI is not set. Add it to your .env for local dev.");
+        }
         await mongoose_1.default.connect(mongoUri);
         console.log("MongoDB connected successfully.");
         await (0, seedAdmin_1.seedAdmin)().catch((e) => console.error("Admin seed error", e));

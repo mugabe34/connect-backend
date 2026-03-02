@@ -123,9 +123,8 @@ router.post("/", auth_1.requireAuth, (0, auth_1.requireRole)("seller", "admin"),
     const files = req.files || [];
     if (files.length === 0)
         return res.status(400).json({ message: "At least one image is required" });
-    const hostBase = `${req.protocol}://${req.get("host")}`;
     const uploads = files.map((f) => ({
-        url: `${hostBase}/uploads/${f.filename}`,
+        url: `/uploads/${f.filename}`,
         publicId: f.filename
     }));
     const { title, description, price, category, tags, contactEmail, contactPhone } = req.body;
@@ -154,11 +153,10 @@ router.put("/:id", auth_1.requireAuth, (0, auth_1.requireRole)("seller", "admin"
     if (req.user.role !== "admin" && String(product.seller) !== req.user.id)
         return res.status(403).json({ message: "Forbidden" });
     const files = req.files || [];
-    const hostBase = `${req.protocol}://${req.get("host")}`;
     let newUploads = [];
     if (files.length) {
         newUploads = files.map((f) => ({
-            url: `${hostBase}/uploads/${f.filename}`,
+            url: `/uploads/${f.filename}`,
             publicId: f.filename
         }));
     }
