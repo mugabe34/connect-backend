@@ -1,7 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
-import cors from "cors";
+import cors, { CorsOptions } from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import path from "path";
@@ -22,14 +22,37 @@ const app = express();
 // Enable secure cookies behind proxies (Render, Railway, Nginrok, etc.)
 app.set("trust proxy", 1);
 
-const clientUrl = process.env.CLIENT_URL;
-if (!clientUrl) {
-  console.warn("CLIENT_URL environment variable not set. CORS may not work as expected.");
+const configuredOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const allowedOrigins = new Set(configuredOrigins);
+allowedOrigins.add("https://connectrw.vercel.app");
+if (process.env.NODE_ENV !== "production") {
+  allowedOrigins.add("http://localhost:5173");
 }
 
-// Using a specific origin is required when credentials: true.
-// In local/dev (when CLIENT_URL is not set), reflect the request origin.
-app.use(cors({ origin: clientUrl || true, credentials: true }));
+if (!configuredOrigins.length) {
+  console.warn(
+    "CLIENT_URL/CLIENT_URLS not set. Using built-in CORS defaults only."
+  );
+}
+
+const corsOptions: CorsOptions = {
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  origin: (origin, callback) => {
+    // Allow non-browser clients/curl (no Origin header)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.has(origin)) return callback(null, true);
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

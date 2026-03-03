@@ -23,13 +23,33 @@ dotenv_1.default.config();
 const app = (0, express_1.default)();
 // Enable secure cookies behind proxies (Render, Railway, Nginrok, etc.)
 app.set("trust proxy", 1);
-const clientUrl = process.env.CLIENT_URL;
-if (!clientUrl) {
-    console.warn("CLIENT_URL environment variable not set. CORS may not work as expected.");
+const configuredOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+const allowedOrigins = new Set(configuredOrigins);
+allowedOrigins.add("https://connectrw.vercel.app");
+if (process.env.NODE_ENV !== "production") {
+    allowedOrigins.add("http://localhost:5173");
 }
-// Using a specific origin is required when credentials: true.
-// In local/dev (when CLIENT_URL is not set), reflect the request origin.
-app.use((0, cors_1.default)({ origin: clientUrl || true, credentials: true }));
+if (!configuredOrigins.length) {
+    console.warn("CLIENT_URL/CLIENT_URLS not set. Using built-in CORS defaults only.");
+}
+const corsOptions = {
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    origin: (origin, callback) => {
+        // Allow non-browser clients/curl (no Origin header)
+        if (!origin)
+            return callback(null, true);
+        if (allowedOrigins.has(origin))
+            return callback(null, true);
+        return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+};
+app.use((0, cors_1.default)(corsOptions));
+app.options("*", (0, cors_1.default)(corsOptions));
 app.use(express_1.default.json({ limit: "10mb" }));
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use((0, cookie_parser_1.default)());
