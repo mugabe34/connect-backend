@@ -103,7 +103,7 @@ async function start() {
             }
             throw new Error("FATAL ERROR: MONGO_URI/MONGODB_URI is not set. Add it to your .env for local dev.");
         }
-        await mongoose_1.default.connect(mongoUri);
+        await mongoose_1.default.connect(mongoUri, { dbName: "connect" });
         console.log("MongoDB connected successfully.");
         await (0, seedAdmin_1.seedAdmin)().catch((e) => console.error("Admin seed error", e));
         const port = Number(process.env.PORT) || 5000;
