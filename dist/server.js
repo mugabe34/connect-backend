@@ -19,6 +19,7 @@ const notifications_1 = __importDefault(require("./routes/notifications"));
 const seedAdmin_1 = require("./utils/seedAdmin");
 const User_1 = __importDefault(require("./models/User"));
 const Product_1 = __importDefault(require("./models/Product"));
+const support_1 = __importDefault(require("./routes/support"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 // Enable secure cookies behind proxies (Render, Railway, Nginrok, etc.)
@@ -62,6 +63,7 @@ app.use("/api/admin", admin_1.default);
 app.use("/api/messages", messages_1.default);
 app.use("/api/uploads", uploads_1.default);
 app.use("/api/notifications", notifications_1.default);
+app.use("/api/support", support_1.default);
 app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", service: "connect-backend" });
 });
@@ -74,8 +76,8 @@ app.get("/api/stats", async (_req, res) => {
 });
 app.get("/api/contact-info", (_req, res) => {
     res.json({
-        email: "mugabeherve7@gmail.com && hirwajules2000@gmail.comc",
-        phone: "+250 781 908 314",
+        email: "mugabeherve7@gmail.com, hirwajules2000@gmail.com, tnsanzearnold@gmail.com",
+        phone: "+250 781 908 314 / 0725574565 / 250725574565",
         location: "Kigali, Rwanda",
     });
 });

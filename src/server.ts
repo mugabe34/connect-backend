@@ -14,6 +14,7 @@ import notificationRoutes from "./routes/notifications";
 import { seedAdmin } from "./utils/seedAdmin";
 import User from "./models/User";
 import Product from "./models/Product";
+import supportRoutes from "./routes/support";
 
 dotenv.config();
 
@@ -67,6 +68,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/support", supportRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "connect-backend" });
@@ -82,8 +84,8 @@ app.get("/api/stats", async (_req, res) => {
 
 app.get("/api/contact-info", (_req, res) => {
   res.json({
-    email: "mugabeherve7@gmail.com && hirwajules2000@gmail.comc",
-    phone: "+250 781 908 314",
+    email: "mugabeherve7@gmail.com, hirwajules2000@gmail.com, tnsanzearnold@gmail.com",
+    phone: "+250 781 908 314 / 0725574565 / 250725574565",
     location: "Kigali, Rwanda",
   });
 });
